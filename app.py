@@ -1,8 +1,8 @@
 """
 Flask RESTful Authentication API with Classy Glossy UI.
 Provides secure endpoints for Login, Register, Google OAuth 2.0 Sign-In / Sign-Up,
-Profile inspection, Profile update, Password change, Session management, Token Refresh,
-Password Reset, Audit Logs, and an Interactive Live API Explorer.
+Active Client Tracking, User Retrieval by Email / Username, Profile inspection & update,
+Password change, Session management, Token Refresh, Password Reset, and Audit Logs.
 """
 import os
 import re
@@ -16,7 +16,7 @@ import database
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.config["SECRET_KEY"] = os.urandom(32).hex()
 
-# Optional Google OAuth Client ID
+# Optional Google OAuth Client ID (can also be updated at runtime via /api/auth/oauth/google/config)
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
 # Initialize SQLite database schema and indexes
@@ -184,7 +184,7 @@ def health():
         "success": True,
         "status": "healthy",
         "service": "Glossy Interactive Auth API",
-        "version": "1.5.0",
+        "version": "1.6.0",
         "uptime_seconds": uptime_seconds,
         "database": "sqlite3 (WAL mode active)",
         "google_oauth_configured": bool(GOOGLE_CLIENT_ID),
@@ -211,9 +211,20 @@ def get_demo_credentials():
 # GOOGLE OAUTH
 # --------------------------------------------------
 
-@app.route("/api/auth/oauth/google/config", methods=["GET"])
+@app.route("/api/auth/oauth/google/config", methods=["GET", "POST"])
 def google_oauth_config():
-    """Return Google OAuth configuration status."""
+    """Get or update Google OAuth configuration."""
+    global GOOGLE_CLIENT_ID
+    if request.method == "POST":
+        data = get_request_data()
+        new_client_id = (data.get("client_id") or "").strip()
+        GOOGLE_CLIENT_ID = new_client_id
+        return jsonify({
+            "success": True,
+            "client_id": GOOGLE_CLIENT_ID or None,
+            "message": "Google Client ID updated successfully."
+        }), 200
+
     return jsonify({
         "success": True,
         "client_id": GOOGLE_CLIENT_ID or None,
@@ -222,7 +233,7 @@ def google_oauth_config():
 
 @app.route("/api/auth/oauth/google", methods=["POST"])
 def google_oauth():
-    """Authenticate or Register user using Google OAuth 2.0."""
+    """Authenticate or Register user using Google OAuth 2.0 (GIS JWT or direct payload)."""
     data = get_request_data()
     client_ip = get_client_ip()
 
@@ -262,7 +273,7 @@ def google_oauth():
 
     user_agent = request.headers.get("User-Agent", "Web Browser")
     device_label = "Google OAuth • Mobile" if "Mobile" in user_agent else "Google OAuth • Desktop"
-    token, expires_at = database.create_session(user["id"], duration_hours=168, device_label=device_label)
+    token, expires_at = database.create_session(user["id"], duration_hours=168, device_label=device_label, ip_address=client_ip)
 
     welcome_msg = f"Account created! Welcome, {user.get('full_name')}!" if is_new else f"Welcome back, {user.get('full_name')}!"
 
@@ -321,7 +332,7 @@ def register():
             "error": error
         }), 409
 
-    token, expires_at = database.create_session(user["id"], duration_hours=24, device_label="Web Client")
+    token, expires_at = database.create_session(user["id"], duration_hours=24, device_label="Web Client", ip_address=client_ip)
 
     return jsonify({
         "success": True,
@@ -368,7 +379,7 @@ def login():
     duration_hours = 168 if remember else 24
     user_agent = request.headers.get("User-Agent", "Web Browser")
     device_label = "Mobile Device" if "Mobile" in user_agent else "Desktop Browser"
-    token, expires_at = database.create_session(user["id"], duration_hours=duration_hours, device_label=device_label)
+    token, expires_at = database.create_session(user["id"], duration_hours=duration_hours, device_label=device_label, ip_address=client_ip)
 
     return jsonify({
         "success": True,
@@ -380,7 +391,86 @@ def login():
     }), 200
 
 # --------------------------------------------------
-# GET USER PROFILE
+# CLIENT TRACKING & REGISTRY
+# --------------------------------------------------
+
+@app.route("/api/auth/clients", methods=["GET"])
+def list_active_clients():
+    """
+    List all currently logged-in clients across the system.
+    Tracks active sessions, device label, IP address, login time, and user info.
+    """
+    clients = database.get_active_clients(limit=100)
+    return jsonify({
+        "success": True,
+        "total_active_clients": len(clients),
+        "clients": clients
+    }), 200
+
+# --------------------------------------------------
+# USER LOOKUP & RETRIEVAL (BY EMAIL OR USERNAME)
+# --------------------------------------------------
+
+@app.route("/api/auth/users/lookup", methods=["GET"])
+def lookup_user_endpoint():
+    """
+    Retrieve user profile, active session status, and activity by email or username.
+    Accepts ?identifier=..., ?email=..., or ?username=...
+    """
+    identifier = (
+        request.args.get("identifier") or 
+        request.args.get("email") or 
+        request.args.get("username") or 
+        request.args.get("q") or ""
+    ).strip()
+
+    if not identifier:
+        return jsonify({
+            "success": False,
+            "error": "Please provide an email or username via '?identifier=', '?email=', or '?username=' query parameter."
+        }), 400
+
+    result = database.lookup_user(identifier)
+    if not result:
+        return jsonify({
+            "success": False,
+            "error": f"No user account found matching '{identifier}'."
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "data": result
+    }), 200
+
+@app.route("/api/auth/users/search", methods=["GET"])
+def search_users_endpoint():
+    """Search users by query string across email, username, and full name."""
+    query = (request.args.get("q") or request.args.get("query") or "").strip()
+    users = database.search_users(query=query, limit=30)
+    return jsonify({
+        "success": True,
+        "total_matches": len(users),
+        "users": users
+    }), 200
+
+@app.route("/api/auth/users/<path:identifier>", methods=["GET"])
+def get_user_by_identifier(identifier):
+    """Retrieve user details and active session status directly by email or username path."""
+    clean_id = (identifier or "").strip()
+    result = database.lookup_user(clean_id)
+    if not result:
+        return jsonify({
+            "success": False,
+            "error": f"User '{clean_id}' was not found in the database."
+        }), 404
+
+    return jsonify({
+        "success": True,
+        "data": result
+    }), 200
+
+# --------------------------------------------------
+# GET USER PROFILE (SELF)
 # --------------------------------------------------
 
 @app.route("/api/auth/me", methods=["GET"])
@@ -404,7 +494,6 @@ def update_profile(user):
     data = get_request_data()
     client_ip = get_client_ip()
 
-    # If key is provided in data, process it; otherwise keep current value
     raw_username = data.get("username")
     raw_full_name = data.get("full_name")
     raw_email = data.get("email")
@@ -649,13 +738,45 @@ def api_spec():
             "method": "POST",
             "path": "/api/auth/oauth/google",
             "auth_required": False,
-            "description": "Authenticates or registers user using Google profile payload.",
+            "description": "Authenticates or registers user using Google profile or GIS JWT payload.",
             "sample_body": {
                 "email": "alex.mercer.dev@gmail.com",
                 "name": "Alex Mercer",
                 "google_id": "10492847291048291048",
                 "picture": "https://lh3.googleusercontent.com/a/default-user"
             }
+        },
+        {
+            "name": "List Active Logged-In Clients",
+            "method": "GET",
+            "path": "/api/auth/clients",
+            "auth_required": False,
+            "description": "Retrieves all currently active logged-in client sessions across the system.",
+            "sample_body": None
+        },
+        {
+            "name": "Lookup User by Email or Username",
+            "method": "GET",
+            "path": "/api/auth/users/lookup",
+            "auth_required": False,
+            "description": "Checks and retrieves user details, active sessions, and activity via '?identifier='.",
+            "sample_body": None
+        },
+        {
+            "name": "Direct User Lookup by Path",
+            "method": "GET",
+            "path": "/api/auth/users/<identifier>",
+            "auth_required": False,
+            "description": "Retrieves user and active session status directly (e.g. /api/auth/users/demo@glossyapi.dev).",
+            "sample_body": None
+        },
+        {
+            "name": "Search Users",
+            "method": "GET",
+            "path": "/api/auth/users/search",
+            "auth_required": False,
+            "description": "Searches users by partial email, username, or full name.",
+            "sample_body": None
         },
         {
             "name": "User Login",

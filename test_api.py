@@ -371,5 +371,71 @@ class GlossyAuthApiTestCase(unittest.TestCase):
         self.assertEqual(res.status_code, 201)
         self.assertTrue(res.get_json()["success"])
 
+    def test_23_active_clients_tracking(self):
+        """Verify GET /api/auth/clients lists all currently active logged-in client sessions."""
+        # 1. Login with demo user to ensure at least one active session
+        login_res = self.client.post("/api/auth/login",
+                                     data=json.dumps({"identifier": "demo@glossyapi.dev", "password": "GlossyPass123!"}),
+                                     content_type="application/json")
+        self.assertEqual(login_res.status_code, 200)
+
+        # 2. Fetch active clients
+        res = self.client.get("/api/auth/clients")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data["success"])
+        self.assertIn("total_active_clients", data)
+        self.assertGreaterEqual(data["total_active_clients"], 1)
+        self.assertIsInstance(data["clients"], list)
+
+        # 3. Check client fields
+        client = data["clients"][0]
+        self.assertIn("username", client)
+        self.assertIn("email", client)
+        self.assertIn("device_label", client)
+        self.assertIn("masked_token", client)
+        self.assertIn("ip_address", client)
+        self.assertIn("session_started_at", client)
+
+    def test_24_user_lookup_by_email_and_username(self):
+        """Verify GET /api/auth/users/lookup retrieves user and active sessions by email or username."""
+        # 1. Lookup by email
+        res_email = self.client.get("/api/auth/users/lookup?email=demo@glossyapi.dev")
+        self.assertEqual(res_email.status_code, 200)
+        data_email = res_email.get_json()
+        self.assertTrue(data_email["success"])
+        self.assertEqual(data_email["data"]["user"]["email"], "demo@glossyapi.dev")
+        self.assertIn("is_currently_logged_in", data_email["data"])
+        self.assertIn("active_sessions", data_email["data"])
+
+        # 2. Lookup by username
+        res_user = self.client.get("/api/auth/users/lookup?username=AlexGlossy")
+        self.assertEqual(res_user.status_code, 200)
+        data_user = res_user.get_json()
+        self.assertTrue(data_user["success"])
+        self.assertEqual(data_user["data"]["user"]["username"], "AlexGlossy")
+
+        # 3. Lookup non-existent
+        res_ghost = self.client.get("/api/auth/users/lookup?identifier=ghost_never_existed@domain.xyz")
+        self.assertEqual(res_ghost.status_code, 404)
+        self.assertFalse(res_ghost.get_json()["success"])
+
+    def test_25_user_lookup_by_path(self):
+        """Verify GET /api/auth/users/<identifier> retrieves user directly by path."""
+        res = self.client.get("/api/auth/users/demo@glossyapi.dev")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["data"]["user"]["email"], "demo@glossyapi.dev")
+
+    def test_26_search_users(self):
+        """Verify GET /api/auth/users/search searches users by query string."""
+        res = self.client.get("/api/auth/users/search?q=demo")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data["success"])
+        self.assertGreaterEqual(data["total_matches"], 1)
+        self.assertEqual(data["users"][0]["email"], "demo@glossyapi.dev")
+
 if __name__ == "__main__":
     unittest.main()

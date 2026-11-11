@@ -234,16 +234,126 @@ function switchTab(tabId) {
   document.querySelectorAll('.glass-card.tab-content').forEach(card => {
     card.classList.toggle('active', card.id === tabId);
   });
+
+  // If opening the Clients & Users tab, automatically fetch fresh active clients
+  if (tabId === 'clientsTab') {
+    loadActiveClients();
+  }
 }
 
+// Global callback for official Google Identity Services (GIS)
+window.handleGoogleCredentialResponse = async function(response) {
+  if (response && response.credential) {
+    showToast('Processing verified Google credentials...', 'info');
+    await executeGoogleAuth({ credential: response.credential }, document.body);
+  }
+};
+
 // ===================================================================
-// 5. GOOGLE OAUTH 2.0 SIGN-IN & SIGN-UP (REAL WORKING FLOW)
+// 5. GOOGLE OAUTH 2.0 SIGN-IN & SIGN-UP (REAL WORKING & GIS INTEGRATION)
 // ===================================================================
 function initGoogleAuth() {
   const googleModal = document.getElementById('googleOAuthModal');
   const closeGoogleModalBtn = document.getElementById('closeGoogleModalBtn');
   const customGoogleForm = document.getElementById('customGoogleForm');
   const toggleCustomGoogleBtn = document.getElementById('toggleCustomGoogleBtn');
+  const googleConfigModal = document.getElementById('googleConfigModal');
+  const closeGoogleConfigModalBtn = document.getElementById('closeGoogleConfigModalBtn');
+  const googleConfigForm = document.getElementById('googleConfigForm');
+  const googleClientIdInput = document.getElementById('googleClientIdInput');
+
+  // Load and initialize official Google Identity Services if client ID is configured
+  async function setupGoogleIdentityServices() {
+    try {
+      const res = await fetch('/api/auth/oauth/google/config');
+      const data = await res.json();
+      const clientId = data.client_id;
+
+      if (clientId && window.google && window.google.accounts && window.google.accounts.id) {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: window.handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+
+        const loginBtnEl = document.getElementById('googleOfficialBtnLogin');
+        const regBtnEl = document.getElementById('googleOfficialBtnRegister');
+
+        if (loginBtnEl) {
+          loginBtnEl.innerHTML = '';
+          google.accounts.id.renderButton(loginBtnEl, {
+            theme: 'outline',
+            size: 'large',
+            type: 'standard',
+            shape: 'pill',
+            text: 'signin_with',
+            width: 280
+          });
+        }
+
+        if (regBtnEl) {
+          regBtnEl.innerHTML = '';
+          google.accounts.id.renderButton(regBtnEl, {
+            theme: 'outline',
+            size: 'large',
+            type: 'standard',
+            shape: 'pill',
+            text: 'signup_with',
+            width: 280
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Attempt GIS initialization with slight delay for script load
+  setTimeout(setupGoogleIdentityServices, 800);
+
+  // Open Google Config Modal
+  document.querySelectorAll('.openGoogleConfigBtn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      playSound('click');
+      try {
+        const res = await fetch('/api/auth/oauth/google/config');
+        const data = await res.json();
+        if (data.client_id) {
+          googleClientIdInput.value = data.client_id;
+        }
+      } catch (err) {}
+      googleConfigModal.classList.add('active');
+    });
+  });
+
+  if (closeGoogleConfigModalBtn) {
+    closeGoogleConfigModalBtn.addEventListener('click', () => {
+      googleConfigModal.classList.remove('active');
+    });
+  }
+
+  if (googleConfigForm) {
+    googleConfigForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const client_id = googleClientIdInput.value.trim();
+      try {
+        const res = await fetch('/api/auth/oauth/google/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          playSound('success');
+          showToast('Google Client ID updated! Re-initializing SDK...', 'success');
+          googleConfigModal.classList.remove('active');
+          setupGoogleIdentityServices();
+        }
+      } catch (err) {
+        showToast('Error saving Google Client ID', 'error');
+      }
+    });
+  }
 
   // Open Google Modal from any Google Auth button (Login or Register tab)
   document.querySelectorAll('.trigger-google-auth').forEach(btn => {
@@ -891,6 +1001,24 @@ const API_ENDPOINTS = {
       picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'
     }
   },
+  clients: {
+    method: 'GET',
+    path: '/api/auth/clients',
+    requiresAuth: false,
+    body: null
+  },
+  lookup: {
+    method: 'GET',
+    path: '/api/auth/users/lookup?identifier=demo@glossyapi.dev',
+    requiresAuth: false,
+    body: null
+  },
+  search_users: {
+    method: 'GET',
+    path: '/api/auth/users/search?q=demo',
+    requiresAuth: false,
+    body: null
+  },
   login: {
     method: 'POST',
     path: '/api/auth/login',
@@ -927,6 +1055,15 @@ const API_ENDPOINTS = {
       full_name: 'Alexander Mercer Senior'
     }
   },
+  change_pw: {
+    method: 'POST',
+    path: '/api/auth/change-password',
+    requiresAuth: true,
+    body: {
+      current_password: 'GlossyPass123!',
+      new_password: 'GlossyPass2026!'
+    }
+  },
   refresh: {
     method: 'POST',
     path: '/api/auth/refresh',
@@ -936,6 +1073,12 @@ const API_ENDPOINTS = {
   sessions: {
     method: 'GET',
     path: '/api/auth/sessions',
+    requiresAuth: true,
+    body: null
+  },
+  revoke_all: {
+    method: 'POST',
+    path: '/api/auth/sessions/revoke-all',
     requiresAuth: true,
     body: null
   },
@@ -1192,6 +1335,289 @@ async function verifyActiveSession() {
   } catch (e) {}
 }
 
+// ===================================================================
+// 10. CLIENT REGISTRY & USER RETRIEVAL / LOOKUP
+// ===================================================================
+function initClientsTab() {
+  const lookupInput = document.getElementById('userLookupInput');
+  const lookupBtn = document.getElementById('btnLookupUser');
+  const lookupContainer = document.getElementById('lookupResultContainer');
+  const refreshBtn = document.getElementById('refreshClientsBtn');
+  const quickLookupBtns = document.querySelectorAll('.quick-lookup-btn');
+  const quickSearchAllBtn = document.getElementById('btnQuickSearchAll');
+
+  // Trigger search on button click
+  if (lookupBtn) {
+    lookupBtn.addEventListener('click', () => {
+      const q = lookupInput.value.trim();
+      if (q) performUserLookup(q);
+      else showToast('Please enter an email or username', 'error');
+    });
+  }
+
+  // Trigger search on Enter key
+  if (lookupInput) {
+    lookupInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const q = lookupInput.value.trim();
+        if (q) performUserLookup(q);
+      }
+    });
+  }
+
+  // Quick lookup pills
+  quickLookupBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const ident = btn.dataset.lookup;
+      lookupInput.value = ident;
+      performUserLookup(ident);
+    });
+  });
+
+  // Quick view all users
+  if (quickSearchAllBtn) {
+    quickSearchAllBtn.addEventListener('click', async () => {
+      lookupContainer.innerHTML = '<div style="text-align:center; padding:1.25rem; color:var(--text-muted);">Fetching registered users...</div>';
+      try {
+        const res = await fetch('/api/auth/users/search');
+        const data = await res.json();
+        if (data.success && data.users && data.users.length) {
+          renderUsersList(data.users);
+        } else {
+          lookupContainer.innerHTML = '<div style="text-align:center; padding:1.25rem; color:var(--text-muted);">No users registered yet.</div>';
+        }
+      } catch (err) {
+        lookupContainer.innerHTML = '<div style="text-align:center; padding:1.25rem; color:#fb7185;">Error searching users.</div>';
+      }
+    });
+  }
+
+  // Refresh active clients button
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      playSound('click');
+      loadActiveClients();
+      showToast('Active clients list refreshed', 'info');
+    });
+  }
+}
+
+// Perform User Lookup by Email or Username
+async function performUserLookup(identifier) {
+  const container = document.getElementById('lookupResultContainer');
+  container.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Searching registry for user...</div>';
+  playSound('click');
+
+  try {
+    const res = await fetch(`/api/auth/users/lookup?identifier=${encodeURIComponent(identifier)}`);
+    const data = await res.json();
+
+    if (res.ok && data.success && data.data) {
+      playSound('success');
+      const item = data.data;
+      const user = item.user;
+      const isOnline = item.is_currently_logged_in;
+      const sessions = item.active_sessions || [];
+      const logs = item.recent_activity || [];
+
+      const initials = (user.full_name || user.username).split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+      const avatarHtml = user.avatar_url 
+        ? `<img src="${user.avatar_url}" alt="${user.username}">` 
+        : `<span>${initials}</span>`;
+
+      let sessionsRows = '';
+      if (sessions.length > 0) {
+        sessionsRows = sessions.map(s => `
+          <div class="client-session-item">
+            <div class="client-session-header">
+              <span class="client-user-badge">📱 ${s.device_label || 'Browser Client'}</span>
+              <span class="client-ip-badge">IP: ${s.ip_address || '127.0.0.1'}</span>
+            </div>
+            <div class="client-time-meta">
+              Started: ${new Date(s.created_at).toLocaleString()} • Expires: ${new Date(s.expires_at).toLocaleString()}
+            </div>
+            <div class="client-token-row">
+              <code style="font-size:0.74rem; color:#38bdf8; font-family:var(--font-mono);">${s.masked_token}</code>
+              <button class="copy-token-btn interactive-btn" onclick="navigator.clipboard.writeText('${s.token}'); showToast('Token copied to clipboard!', 'success');">Copy Token</button>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        sessionsRows = '<div style="font-size:0.8rem; color:var(--text-muted); padding:0.5rem 0;">No active sessions currently. User is offline.</div>';
+      }
+
+      let logsHtml = '';
+      if (logs.length > 0) {
+        logsHtml = logs.map(l => `
+          <div style="font-size:0.75rem; color:var(--text-sub); margin-bottom:0.25rem;">
+            <span style="color:#818cf8; font-family:var(--font-mono);">${l.event_type}</span>: ${l.description} (${new Date(l.created_at).toLocaleTimeString()})
+          </div>
+        `).join('');
+      }
+
+      container.innerHTML = `
+        <div class="user-lookup-card">
+          <div class="lookup-user-header">
+            <div class="lookup-avatar">${avatarHtml}</div>
+            <div>
+              <div class="lookup-meta-name">${user.full_name || user.username}</div>
+              <div class="lookup-meta-handle">@${user.username} • ${user.email}</div>
+            </div>
+            <div class="live-status-badge ${isOnline ? 'online' : 'offline'}">
+              <span class="status-dot"></span>
+              <span>${isOnline ? `LOGGED IN (${sessions.length})` : 'OFFLINE'}</span>
+            </div>
+          </div>
+
+          <div class="profile-details-grid" style="margin-bottom: 1rem;">
+            <div class="detail-card">
+              <span class="detail-key">Auth Provider</span>
+              <span class="detail-val" style="color: ${user.auth_provider === 'google' ? '#38bdf8' : '#34d399'};">${user.auth_provider === 'google' ? 'Google OAuth 2.0' : 'Local Account'}</span>
+            </div>
+            <div class="detail-card">
+              <span class="detail-key">Database User ID</span>
+              <span class="detail-val">#${user.id}</span>
+            </div>
+            <div class="detail-card">
+              <span class="detail-key">Joined Date</span>
+              <span class="detail-val">${user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Recent'}</span>
+            </div>
+            <div class="detail-card">
+              <span class="detail-key">Last Login</span>
+              <span class="detail-val">${user.last_login ? new Date(user.last_login).toLocaleTimeString() : 'Never'}</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 0.85rem;">
+            <div class="console-label" style="margin-bottom: 0.5rem;">Active Client Sessions (${sessions.length})</div>
+            ${sessionsRows}
+          </div>
+
+          ${logsHtml ? `
+          <div style="margin-top: 0.85rem; padding-top: 0.65rem; border-top: 1px solid rgba(255,255,255,0.06);">
+            <div class="console-label" style="margin-bottom: 0.4rem;">Recent Security Audit Log</div>
+            ${logsHtml}
+          </div>
+          ` : ''}
+
+          <details style="margin-top: 0.85rem; font-size: 0.75rem; color: var(--text-muted); cursor: pointer;">
+            <summary style="font-weight: 600; margin-bottom: 0.4rem;">View Raw JSON Response</summary>
+            <pre style="background: rgba(0,0,0,0.5); padding: 0.75rem; border-radius: 8px; overflow-x: auto; color: #67e8f9; font-family: var(--font-mono);">${JSON.stringify(data, null, 2)}</pre>
+          </details>
+        </div>
+      `;
+    } else {
+      playSound('error');
+      container.innerHTML = `
+        <div style="text-align: center; padding: 1.5rem; background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.25); border-radius: 12px; color: #fb7185; font-size: 0.88rem;">
+          ⚠️ ${data.error || `No user found matching '${identifier}'. Please check spelling or register a new account.`}
+        </div>
+      `;
+    }
+  } catch (err) {
+    playSound('error');
+    container.innerHTML = `
+      <div style="text-align: center; padding: 1.25rem; color: #fb7185; font-size: 0.88rem;">
+        Failed to communicate with user lookup API.
+      </div>
+    `;
+  }
+}
+
+// Render search results for all users
+function renderUsersList(users) {
+  const container = document.getElementById('lookupResultContainer');
+  container.innerHTML = `
+    <div style="margin-bottom:0.5rem; font-size:0.78rem; color:var(--text-muted);">Found ${users.length} registered user(s):</div>
+    ${users.map(u => `
+      <div class="client-session-item" style="cursor:pointer;" onclick="document.getElementById('userLookupInput').value='${u.email}'; performUserLookup('${u.email}');">
+        <div class="client-session-header">
+          <div class="client-user-badge">
+            ${u.full_name || u.username}
+            <span style="font-weight:400; font-size:0.75rem; color:var(--text-muted);">(@${u.username})</span>
+          </div>
+          <span class="live-status-badge ${u.is_logged_in ? 'online' : 'offline'}" style="margin:0;">
+            <span class="status-dot"></span>
+            <span>${u.is_logged_in ? 'Online' : 'Offline'}</span>
+          </span>
+        </div>
+        <div style="font-size:0.74rem; color:var(--text-sub);">${u.email} • Click to retrieve full profile & sessions</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// Load and render currently active logged-in clients
+async function loadActiveClients() {
+  const container = document.getElementById('activeClientsContainer');
+  const countBadge = document.getElementById('activeClientsBadgeCount');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/auth/clients');
+    const data = await res.json();
+
+    if (data.success) {
+      const clients = data.clients || [];
+      if (countBadge) countBadge.textContent = clients.length;
+
+      if (clients.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem;">
+            No clients currently logged in. Sign in using Google or email above to initiate an active session.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = clients.map(c => {
+        const initials = (c.full_name || c.username).split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+        const avatarHtml = c.avatar_url 
+          ? `<img src="${c.avatar_url}" alt="${c.username}" style="width:100%;height:100%;object-fit:cover;">`
+          : `<span>${initials}</span>`;
+
+        return `
+          <div class="client-session-item">
+            <div class="client-session-header">
+              <div style="display:flex; align-items:center; gap:0.65rem;">
+                <div class="lookup-avatar" style="width:36px; height:36px; font-size:0.9rem; border-radius:10px;">${avatarHtml}</div>
+                <div>
+                  <div class="client-user-badge">
+                    ${c.full_name || c.username}
+                    <span style="font-weight:400; font-size:0.75rem; color:var(--text-muted);">(@${c.username})</span>
+                    <span class="active-badge ${c.auth_provider === 'google' ? 'google-badge' : ''}" style="margin:0; font-size:0.6rem; padding:0.1rem 0.4rem;">
+                      ${c.auth_provider === 'google' ? 'Google' : 'Local'}
+                    </span>
+                  </div>
+                  <div style="font-size:0.74rem; color:var(--text-sub);">${c.email}</div>
+                </div>
+              </div>
+              <span class="client-ip-badge">IP: ${c.ip_address || '127.0.0.1'}</span>
+            </div>
+
+            <div class="client-time-meta" style="margin-top:0.4rem;">
+              <span>📱 ${c.device_label || 'Web Client'}</span> • 
+              <span>Connected: ${new Date(c.session_started_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span> • 
+              <span>Expires: ${new Date(c.expires_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            </div>
+
+            <div class="client-token-row">
+              <code style="font-size:0.74rem; color:#38bdf8; font-family:var(--font-mono);">${c.masked_token}</code>
+              <div style="display:flex; gap:0.4rem;">
+                <button class="copy-token-btn interactive-btn" onclick="navigator.clipboard.writeText('${c.token}'); showToast('Token copied to clipboard!', 'success');">Copy Token</button>
+                <button class="copy-token-btn interactive-btn" style="color:#a5b4fc;" onclick="document.getElementById('userLookupInput').value='${c.email}'; performUserLookup('${c.email}');">Inspect User</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (err) {
+    container.innerHTML = '<div style="text-align:center; padding:1rem; color:#fb7185;">Failed to load active clients.</div>';
+  }
+}
+
 // Sound toggle button in header
 function initSoundToggle() {
   const toggleBtn = document.getElementById('soundToggle');
@@ -1227,6 +1653,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordFeatures();
   initAuthForms();
   initGoogleAuth();
+  initClientsTab();
   initSuccessScreen();
   initForgotModal();
   initProfileActions();

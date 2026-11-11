@@ -83,6 +83,10 @@
           <span class="pill-icon">✨</span>
           <span>Register</span>
         </button>
+        <button class="nav-pill interactive-btn" data-tab="clientsTab">
+          <span class="pill-icon">👥</span>
+          <span>Clients & Users</span>
+        </button>
         <button class="nav-pill interactive-btn" data-tab="apiTab">
           <span class="pill-icon">⚡</span>
           <span>API Console</span>
@@ -202,6 +206,11 @@
             <span>GitHub</span>
           </button>
         </div>
+
+        <div class="google-official-wrap" id="googleOfficialLoginWrap">
+          <div id="googleOfficialBtnLogin"></div>
+          <button type="button" class="mini-text-btn openGoogleConfigBtn" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">⚙️ Google Client ID Settings</button>
+        </div>
       </section>
 
       <!-- ================= TAB 2: REGISTER ================= -->
@@ -214,7 +223,7 @@
         </div>
 
         <!-- 1-Click Google Sign Up Button at the top of registration -->
-        <button type="button" class="glossy-btn social-btn google-btn interactive-btn spotlight-btn trigger-google-auth" data-provider="Google" style="width:100%; margin-bottom: 1.25rem;">
+        <button type="button" class="glossy-btn social-btn google-btn interactive-btn spotlight-btn trigger-google-auth" data-provider="Google" style="width:100%; margin-bottom: 0.75rem;">
           <span class="btn-shimmer"></span>
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
@@ -222,8 +231,13 @@
             <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.94 0 12s.45 3.84 1.25 5.42l4.03-3.15z"/>
             <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.93 6.72-4.93z"/>
           </svg>
-          <span>Sign up with Google (1-Click)</span>
+          <span>Sign up with Google (Instant Mode)</span>
         </button>
+
+        <div class="google-official-wrap" id="googleOfficialRegisterWrap">
+          <div id="googleOfficialBtnRegister"></div>
+          <button type="button" class="mini-text-btn openGoogleConfigBtn" style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.5rem;">⚙️ Google Client ID Settings</button>
+        </div>
 
         <div class="divider" style="margin-top: 0; margin-bottom: 1.25rem;">
           <span>or register with email</span>
@@ -358,6 +372,67 @@
         </div>
       </section>
 
+      <!-- ================= TAB: CLIENTS & USER RETRIEVAL ================= -->
+      <section class="glass-card tab-content" id="clientsTab">
+        <div class="card-gloss-highlight"></div>
+        <div class="card-header">
+          <div class="pill-badge">CLIENT REGISTRY & LOOKUP</div>
+          <h2 class="card-title">Clients & User Lookup</h2>
+          <p class="card-desc">Track active logged-in clients and search/retrieve any registered user by email or username.</p>
+        </div>
+
+        <!-- 1. USER RETRIEVAL / SEARCH SECTION -->
+        <div class="sessions-overview-box" style="margin-bottom: 1.5rem;">
+          <div class="console-label-row">
+            <span class="console-label">Retrieve User Profile</span>
+            <span class="detail-key">GET /api/auth/users/lookup</span>
+          </div>
+
+          <div class="search-glass-wrap" style="margin-top: 0.5rem;">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted); margin-left: 0.2rem;">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="userLookupInput" placeholder="Enter email (e.g. demo@glossyapi.dev) or username (e.g. AlexGlossy)...">
+            <button type="button" class="glossy-btn mini-btn interactive-btn" id="btnLookupUser">
+              <span class="btn-shimmer"></span>
+              <span class="btn-text">Retrieve</span>
+            </button>
+          </div>
+
+          <div class="quick-tags-row">
+            <span class="quick-tags-label">Quick lookup:</span>
+            <button type="button" class="quick-tag-pill quick-lookup-btn" data-lookup="demo@glossyapi.dev">demo@glossyapi.dev</button>
+            <button type="button" class="quick-tag-pill quick-lookup-btn" data-lookup="AlexGlossy">AlexGlossy</button>
+            <button type="button" class="quick-tag-pill" id="btnQuickSearchAll">View All Users</button>
+          </div>
+
+          <!-- Result Container for User Lookup -->
+          <div id="lookupResultContainer">
+            <div style="text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.85rem;">
+              Type an email address or username above and click <strong>Retrieve</strong> to inspect their profile and active login status.
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. ACTIVE LOGGED-IN CLIENTS TRACKER -->
+        <div class="sessions-overview-box">
+          <div class="console-label-row">
+            <span class="console-label">Logged-In Clients (<span id="activeClientsBadgeCount">0</span>)</span>
+            <button class="mini-text-btn" id="refreshClientsBtn">🔄 Refresh List</button>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+            Real-time registry of all clients currently connected with active sessions across the API.
+          </p>
+
+          <div class="clients-list-container" id="activeClientsContainer">
+            <div style="text-align: center; padding: 1.25rem; color: var(--text-muted); font-size: 0.85rem;">
+              Loading active clients...
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= TAB 3: LIVE API CONSOLE ================= -->
       <section class="glass-card tab-content" id="apiTab">
         <div class="card-gloss-highlight"></div>
@@ -375,6 +450,18 @@
               <span class="method-tag post">POST</span>
               <span>/oauth/google</span>
             </button>
+            <button class="endpoint-btn interactive-btn" data-endpoint="clients">
+              <span class="method-tag get">GET</span>
+              <span>/clients</span>
+            </button>
+            <button class="endpoint-btn interactive-btn" data-endpoint="lookup">
+              <span class="method-tag get">GET</span>
+              <span>/users/lookup</span>
+            </button>
+            <button class="endpoint-btn interactive-btn" data-endpoint="search_users">
+              <span class="method-tag get">GET</span>
+              <span>/users/search</span>
+            </button>
             <button class="endpoint-btn interactive-btn" data-endpoint="login">
               <span class="method-tag post">POST</span>
               <span>/login</span>
@@ -391,6 +478,10 @@
               <span class="method-tag post" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">PUT</span>
               <span>/profile</span>
             </button>
+            <button class="endpoint-btn interactive-btn" data-endpoint="change_pw">
+              <span class="method-tag post">POST</span>
+              <span>/change-password</span>
+            </button>
             <button class="endpoint-btn interactive-btn" data-endpoint="refresh">
               <span class="method-tag post">POST</span>
               <span>/refresh</span>
@@ -398,6 +489,10 @@
             <button class="endpoint-btn interactive-btn" data-endpoint="sessions">
               <span class="method-tag get">GET</span>
               <span>/sessions</span>
+            </button>
+            <button class="endpoint-btn interactive-btn" data-endpoint="revoke_all">
+              <span class="method-tag post">POST</span>
+              <span>/revoke-all</span>
             </button>
             <button class="endpoint-btn interactive-btn" data-endpoint="health">
               <span class="method-tag get">GET</span>
@@ -702,6 +797,36 @@
         <button type="submit" class="glossy-btn primary-action interactive-btn spotlight-btn" id="applyResetBtn">
           <span class="btn-shimmer"></span>
           <span class="btn-text">Update Password</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= GOOGLE CLIENT ID CONFIG MODAL ================= -->
+  <div class="glass-modal-backdrop" id="googleConfigModal">
+    <div class="glass-card modal-card">
+      <div class="card-gloss-highlight"></div>
+      <button class="modal-close-btn" id="closeGoogleConfigModalBtn">&times;</button>
+      
+      <div class="card-header">
+        <div class="pill-badge">GOOGLE OAUTH SETUP</div>
+        <h2 class="card-title">Google Client ID</h2>
+        <p class="card-desc">Configure your Google Cloud OAuth 2.0 Web Client ID for official Google Identity Services.</p>
+      </div>
+
+      <form id="googleConfigForm" class="auth-form">
+        <div class="form-group">
+          <label for="googleClientIdInput">OAuth Client ID (from console.cloud.google.com)</label>
+          <div class="input-glass-wrap">
+            <input type="text" id="googleClientIdInput" placeholder="xxxx.apps.googleusercontent.com">
+          </div>
+          <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-top: 0.35rem;">
+            Tip: Leave blank to use instant Interactive Google Sign-Up mode, or enter your Client ID to initialize official Google One-Tap & buttons.
+          </span>
+        </div>
+        <button type="submit" class="glossy-btn primary-action interactive-btn spotlight-btn" id="saveGoogleConfigBtn">
+          <span class="btn-shimmer"></span>
+          <span class="btn-text">Save & Re-initialize Google SDK</span>
         </button>
       </form>
     </div>

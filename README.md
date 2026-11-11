@@ -126,12 +126,84 @@ python app.py
 - **URL**: `GET /api/auth/sessions`
 - **Header**: `Authorization: Bearer <token>`
 
+### 7. Track Logged-In Clients (System-Wide)
+- **URL**: `GET /api/auth/clients`
+- **Description**: Returns all currently active client sessions, devices, IP addresses, login times, and associated users.
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "total_active_clients": 2,
+  "clients": [
+    {
+      "username": "AlexGlossy",
+      "email": "demo@glossyapi.dev",
+      "full_name": "Alex Mercer",
+      "device_label": "Desktop Browser",
+      "ip_address": "127.0.0.1",
+      "masked_token": "glossy_9f8d...a4b2",
+      "session_started_at": "2026-11-11T15:10:00",
+      "expires_at": "2026-11-12T15:10:00"
+    }
+  ]
+}
+```
+
+### 8. Lookup / Retrieve User by Email or Username
+- **URL**: `GET /api/auth/users/lookup?identifier=<email_or_username>` (also supports `GET /api/auth/users/<identifier>`)
+- **Description**: Retrieves full profile, whether they are currently logged in, their active sessions, and recent security logs.
+- **Example**: `GET /api/auth/users/lookup?identifier=demo@glossyapi.dev`
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "username": "AlexGlossy",
+      "email": "demo@glossyapi.dev",
+      "full_name": "Alex Mercer",
+      "auth_provider": "local",
+      "created_at": "2026-11-11T12:00:00",
+      "last_login": "2026-11-11T15:10:00"
+    },
+    "is_currently_logged_in": true,
+    "active_sessions_count": 1,
+    "active_sessions": [
+      {
+        "token": "glossy_9f8d1c...",
+        "masked_token": "glossy_9f8d...a4b2",
+        "device_label": "Desktop Browser",
+        "ip_address": "127.0.0.1",
+        "created_at": "2026-11-11T15:10:00",
+        "expires_at": "2026-11-12T15:10:00"
+      }
+    ],
+    "recent_activity": []
+  }
+}
+```
+
+### 9. Search Users Across System
+- **URL**: `GET /api/auth/users/search?q=<query>`
+- **Description**: Returns all users matching partial email, username, or name, along with their live online/offline status.
+
+### 10. Change Password (Authenticated)
+- **URL**: `POST /api/auth/change-password`
+- **Header**: `Authorization: Bearer <token>`
+- **Payload**: `{"current_password": "OldPass123!", "new_password": "NewPass456!"}`
+
+### 11. Revoke All Other Active Sessions
+- **URL**: `POST /api/auth/sessions/revoke-all`
+- **Header**: `Authorization: Bearer <token>`
+- **Description**: Immediately invalidates all other devices while keeping current active session.
+
 ---
 
 ## 🧪 Automated Test Suite
 
-Run all 15 unit and integration tests (including Google OAuth testing):
+Run all 26 unit and integration tests (including Google OAuth, Client Tracking, and User Retrieval testing):
 ```bash
 python test_api.py
 ```
-*(All 15 tests pass with 100% success rate)*
+*(All 26 tests pass with 100% success rate)*

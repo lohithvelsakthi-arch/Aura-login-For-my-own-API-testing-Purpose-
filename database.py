@@ -1,7 +1,8 @@
 """
 Database initialization and management for the Glossy Auth API.
 Uses SQLite for zero-setup, robust local persistence.
-Supports users, sessions, password resets, Google & GitHub OAuth, session auditing, and security logs.
+Supports users, sessions, password resets, Google & GitHub OAuth, session auditing,
+client tracking, and user retrieval by email or username.
 """
 import sqlite3
 import os
@@ -71,6 +72,7 @@ def init_db():
             token TEXT PRIMARY KEY,
             user_id INTEGER NOT NULL,
             device_label TEXT DEFAULT 'Desktop Browser',
+            ip_address TEXT DEFAULT '127.0.0.1',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -82,6 +84,8 @@ def init_db():
         existing_sess_cols = [row["name"] for row in cursor.fetchall()]
         if "device_label" not in existing_sess_cols:
             cursor.execute("ALTER TABLE sessions ADD COLUMN device_label TEXT DEFAULT 'Desktop Browser'")
+        if "ip_address" not in existing_sess_cols:
+            cursor.execute("ALTER TABLE sessions ADD COLUMN ip_address TEXT DEFAULT '127.0.0.1'")
 
         # Create password resets table
         cursor.execute("""
@@ -466,8 +470,8 @@ def change_user_password(user_id, current_password, new_password, ip_address="12
     finally:
         conn.close()
 
-def create_session(user_id, duration_hours=24, device_label="Web Client"):
-    """Create a persistent cryptographically secure session token."""
+def create_session(user_id, duration_hours=24, device_label="Web Client", ip_address="127.0.0.1"):
+    """Create a persistent cryptographically secure session token tracking device and client IP."""
     conn = get_connection()
     cursor = conn.cursor()
     try:
@@ -475,9 +479,9 @@ def create_session(user_id, duration_hours=24, device_label="Web Client"):
         now = datetime.utcnow()
         expires = now + timedelta(hours=duration_hours)
         cursor.execute("""
-            INSERT INTO sessions (token, user_id, device_label, created_at, expires_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (token, user_id, device_label, now.isoformat(), expires.isoformat()))
+            INSERT INTO sessions (token, user_id, device_label, ip_address, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (token, user_id, device_label, ip_address or "127.0.0.1", now.isoformat(), expires.isoformat()))
         conn.commit()
         return token, expires.isoformat()
     except Exception:
@@ -499,7 +503,7 @@ def validate_session(token):
     cursor = conn.cursor()
     try:
         cursor.execute("""
-            SELECT s.token, s.expires_at, s.device_label, u.id, u.username, u.email, u.full_name, u.auth_provider, u.avatar_url, u.created_at, u.last_login
+            SELECT s.token, s.expires_at, s.device_label, s.ip_address, u.id, u.username, u.email, u.full_name, u.auth_provider, u.avatar_url, u.created_at, u.last_login
             FROM sessions s
             JOIN users u ON s.user_id = u.id
             WHERE s.token = ?
@@ -537,7 +541,7 @@ def refresh_session_token(old_token, extension_hours=24, ip_address="127.0.0.1")
     if not user:
         return None, None, "Session is invalid or expired."
     destroy_session(old_token)
-    new_token, expires_at = create_session(user["id"], duration_hours=extension_hours, device_label=user.get("device_label", "Refreshed Session"))
+    new_token, expires_at = create_session(user["id"], duration_hours=extension_hours, device_label=user.get("device_label", "Refreshed Session"), ip_address=ip_address)
     log_audit_event(user["id"], "token_refresh", "Rotated session token and extended expiration", ip_address=ip_address)
     return new_token, expires_at, None
 
@@ -594,13 +598,165 @@ def get_user_sessions(user_id):
     try:
         now_str = datetime.utcnow().isoformat()
         cursor.execute("""
-            SELECT token, device_label, created_at, expires_at
+            SELECT token, device_label, ip_address, created_at, expires_at
             FROM sessions
             WHERE user_id = ? AND expires_at > ?
             ORDER BY created_at DESC
         """, (user_id, now_str))
         rows = cursor.fetchall()
         return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+def get_active_clients(limit=50):
+    """
+    List all currently active logged-in client sessions across the entire system.
+    Tracks client token, device, IP address, login time, expiry, and associated user.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cleanup_expired_records(conn)
+        now_str = datetime.utcnow().isoformat()
+        cursor.execute("""
+            SELECT 
+                s.token,
+                s.user_id,
+                s.device_label,
+                s.ip_address,
+                s.created_at AS session_started_at,
+                s.expires_at,
+                u.username,
+                u.email,
+                u.full_name,
+                u.auth_provider,
+                u.avatar_url,
+                u.last_login
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.expires_at > ?
+            ORDER BY s.created_at DESC
+            LIMIT ?
+        """, (now_str, limit))
+        rows = cursor.fetchall()
+        clients = []
+        for r in rows:
+            item = dict(r)
+            token = item["token"]
+            item["masked_token"] = f"{token[:10]}...{token[-6:]}" if len(token) > 16 else token
+            clients.append(item)
+        return clients
+    finally:
+        conn.close()
+
+def lookup_user(identifier):
+    """
+    Retrieve user details by email or username (case-insensitive) or user ID.
+    Returns full profile, active session status, all active sessions, and recent activity.
+    """
+    if not identifier:
+        return None
+    ident = str(identifier).strip()
+    if not ident:
+        return None
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cleanup_expired_records(conn)
+        # Match email or username case-insensitively
+        cursor.execute("""
+            SELECT id, username, email, full_name, auth_provider, google_id, github_id, avatar_url, created_at, last_login
+            FROM users
+            WHERE email = ? COLLATE NOCASE OR username = ? COLLATE NOCASE
+        """, (ident.lower(), ident))
+        row = cursor.fetchone()
+
+        # Fallback to integer ID if numeric
+        if not row and ident.isdigit():
+            cursor.execute("""
+                SELECT id, username, email, full_name, auth_provider, google_id, github_id, avatar_url, created_at, last_login
+                FROM users
+                WHERE id = ?
+            """, (int(ident),))
+            row = cursor.fetchone()
+
+        if not row:
+            return None
+
+        user = dict(row)
+        user_id = user["id"]
+
+        # Fetch active sessions for this user
+        now_str = datetime.utcnow().isoformat()
+        cursor.execute("""
+            SELECT token, device_label, ip_address, created_at, expires_at
+            FROM sessions
+            WHERE user_id = ? AND expires_at > ?
+            ORDER BY created_at DESC
+        """, (user_id, now_str))
+        sessions = []
+        for s in cursor.fetchall():
+            s_dict = dict(s)
+            t = s_dict["token"]
+            s_dict["masked_token"] = f"{t[:10]}...{t[-6:]}" if len(t) > 16 else t
+            sessions.append(s_dict)
+
+        # Fetch recent security audit logs
+        cursor.execute("""
+            SELECT event_type, description, ip_address, created_at
+            FROM audit_logs
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT 8
+        """, (user_id,))
+        recent_logs = [dict(l) for l in cursor.fetchall()]
+
+        return {
+            "user": user,
+            "is_currently_logged_in": len(sessions) > 0,
+            "active_sessions_count": len(sessions),
+            "active_sessions": sessions,
+            "recent_activity": recent_logs
+        }
+    finally:
+        conn.close()
+
+def search_users(query="", limit=20):
+    """Search users by partial email, username, or full name."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cleanup_expired_records(conn)
+        now_str = datetime.utcnow().isoformat()
+        q = (query or "").strip().lower()
+        if not q:
+            cursor.execute("""
+                SELECT id, username, email, full_name, auth_provider, avatar_url, created_at, last_login
+                FROM users
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (limit,))
+        else:
+            pattern = f"%{q}%"
+            cursor.execute("""
+                SELECT id, username, email, full_name, auth_provider, avatar_url, created_at, last_login
+                FROM users
+                WHERE email LIKE ? OR username LIKE ? OR full_name LIKE ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (pattern, pattern, pattern, limit))
+
+        rows = cursor.fetchall()
+        results = []
+        for r in rows:
+            u = dict(r)
+            cursor.execute("SELECT COUNT(*) AS cnt FROM sessions WHERE user_id = ? AND expires_at > ?", (u["id"], now_str))
+            cnt = cursor.fetchone()["cnt"]
+            u["is_logged_in"] = cnt > 0
+            u["active_sessions_count"] = cnt
+            results.append(u)
+        return results
     finally:
         conn.close()
 
