@@ -904,6 +904,12 @@ def api_spec():
 # START FLASK SERVER
 # --------------------------------------------------
 
+# if __name__ == "__main__":
+#     print("✨ Starting Glossy Auth API on http://127.0.0.1:5000 ✨")
+#     app.run(host="127.0.0.1", port=5000, debug=True)
+import os
+
 if __name__ == "__main__":
-    print("✨ Starting Glossy Auth API on http://127.0.0.1:5000 ✨")
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    print(f"Starting Glossy Auth API on port {port}")
+    app.run(host="0.0.0.0", port=port, debug=False)
