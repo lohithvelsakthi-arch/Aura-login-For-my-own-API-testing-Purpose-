@@ -846,8 +846,10 @@ const isDirectRun = process.argv[1] && (
   process.argv[1].includes('server')
 );
 if (isDirectRun || process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`✨ AURA Auth API (Node.js/Express) running on http://127.0.0.1:${PORT} ✨`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✨ AURA Auth API (Node.js/Express) running on:`);
+    console.log(`   👉 Local:   http://localhost:${PORT}`);
+    console.log(`   👉 Network: http://127.0.0.1:${PORT}`);
   });
 }
 
