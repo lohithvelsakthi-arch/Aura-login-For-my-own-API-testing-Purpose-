@@ -84,3 +84,4 @@ npm run dev
 - **Dynamic Themes**: 4 Gemstone accents (`sapphire`, `emerald`, `rose`, `amber`).
 - **Interactive Physics**: Mouse-tracking coordinate spotlight flare, liquid click ripples, and diagonal high-gloss shimmer waves.
 - **Synthesized Audio**: Web Audio API oscillator synthesis for tactile mechanical clicks and celebratory dual-harmonic glass chimes.
+

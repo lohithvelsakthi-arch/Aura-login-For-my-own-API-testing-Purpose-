@@ -1,5 +1,5 @@
 {
-  "name": "aura-auth-client",
+  "name": "aura-auth-frontend",
   "private": true,
   "version": "2.0.0",
   "type": "module",
