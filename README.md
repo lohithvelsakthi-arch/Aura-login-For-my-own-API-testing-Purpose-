@@ -77,27 +77,28 @@ MY API/
 │   └── package.json
 │
 ├── test_in_memory.js           # Automated integration test suite (27 checks)
-├── package.json                # Root scripts (start, dev, build, test)
-└── run.bat                     # 1-Click launcher for Windows
+└── package.json                # Root scripts (start, dev, build, test)
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### Option 1: 1-Click Launcher (Windows)
-Double-click `run.bat` in File Explorer. It will start the server and automatically open the application at:
-👉 **[http://localhost:5000](http://localhost:5000)**
+Run directly using standard npm commands in any terminal:
 
-### Option 2: Terminal / npm
 ```bash
-# Start production server
+# Start production server (serves frontend + API on http://localhost:5000)
 npm start
 
-# Or run automated tests
+# Run automated integration tests (27 verification checks)
 npm test
 
-# Or build client assets
+# Build the React frontend production bundle
+npm run build
+
+# Start live frontend development server (Vite with HMR on http://localhost:5173)
+npm run dev:client
+```
 npm run build
 ```
 
