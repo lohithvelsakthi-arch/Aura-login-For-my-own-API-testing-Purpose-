@@ -840,13 +840,19 @@ app.use('/api', (req, res) => {
   });
 });
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('SERVER ERROR CAUGHT:', err);
+  res.status(500).send('SERVER ERROR: ' + err.stack);
+});
+
 // Start Server if run directly
 const isDirectRun = process.argv[1] && (
   process.argv[1].endsWith('app.js') || 
   process.argv[1].includes('server')
 );
 if (isDirectRun || process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, () => {
     console.log(`✨ AURA Auth API (Node.js/Express) running on:`);
     console.log(`   👉 Local:   http://localhost:${PORT}`);
     console.log(`   👉 Network: http://127.0.0.1:${PORT}`);
