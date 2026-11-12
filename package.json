@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "node server/app.js",
-    "build": "npm run build --prefix client",
+    "build": "npm run build --prefix Frontend",
     "test": "node test_in_memory.js",
     "dev:server": "node server/app.js",
-    "dev:client": "npm run dev --prefix client"
+    "dev:client": "npm run dev --prefix Frontend"
   },
   "keywords": [
     "auth",

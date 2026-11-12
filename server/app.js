@@ -60,7 +60,7 @@ function getClientIp(req) {
       return req.socket.remoteAddress;
     }
     if (req.ip) return req.ip;
-  } catch (e) {}
+  } catch (e) { }
   return '127.0.0.1';
 }
 
@@ -819,16 +819,20 @@ app.get('/api/auth/spec', (req, res) => {
 });
 
 // --------------------------------------------------
-// STATIC FILES & SPA FALLBACK (if client built)
+// STATIC FILES & SPA FALLBACK (Frontend React app)
 // --------------------------------------------------
-const clientDist = path.join(__dirname, '..', 'client', 'dist');
-if (fs.existsSync(clientDist)) {
-  app.use(express.static(clientDist));
+let frontendDist = path.join(__dirname, '..', 'Frontend', 'dist');
+if (!fs.existsSync(frontendDist)) {
+  frontendDist = path.join(__dirname, '..', 'client', 'dist');
+}
+
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
       return next();
     }
-    res.sendFile(path.join(clientDist, 'index.html'));
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
 }
 
@@ -848,7 +852,7 @@ app.use((err, req, res, next) => {
 
 // Start Server if run directly
 const isDirectRun = process.argv[1] && (
-  process.argv[1].endsWith('app.js') || 
+  process.argv[1].endsWith('app.js') ||
   process.argv[1].includes('server')
 );
 if (isDirectRun || process.env.NODE_ENV !== 'test') {

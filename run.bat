@@ -19,9 +19,9 @@ echo [OK] Node.js version:
 node -v
 
 :: Ensure React production bundle exists
-if not exist "client\dist\index.html" (
-    echo [INFO] Building React client for production...
-    cd client
+if not exist "Frontend\dist\index.html" (
+    echo [INFO] Building React frontend for production...
+    cd Frontend
     call npm run build
     cd ..
 )

@@ -49,7 +49,7 @@ A high-performance, classy, and glossy authentication application and REST API b
 
 ```
 MY API/
-├── client/                     # React 18 + Vite Frontend
+├── Frontend/                   # React 18 + Vite Frontend
 │   ├── src/
 │   │   ├── components/         # Modular glassmorphism UI components
 │   │   │   ├── Navbar.jsx
