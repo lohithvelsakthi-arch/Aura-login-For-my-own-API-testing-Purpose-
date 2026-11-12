@@ -1,0 +1,25 @@
+{
+  "name": "aura-auth-system",
+  "version": "2.0.0",
+  "description": "AURA 2.0 • Luxury Glassmorphism Auth API & Portal rebuilt with Node.js, Express, and React",
+  "type": "module",
+  "scripts": {
+    "start": "node server/app.js",
+    "build": "npm run build --prefix client",
+    "test": "node test_in_memory.js",
+    "dev:server": "node server/app.js",
+    "dev:client": "npm run dev --prefix client"
+  },
+  "keywords": [
+    "auth",
+    "nodejs",
+    "express",
+    "react",
+    "vite",
+    "glassmorphism",
+    "sqlite",
+    "google-oauth"
+  ],
+  "author": "Lohith Vel Sakthi",
+  "license": "MIT"
+}

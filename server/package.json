@@ -1,0 +1,15 @@
+{
+  "name": "aura-auth-server",
+  "version": "2.0.0",
+  "description": "AURA Glossy Authentication REST API - Node.js Express Backend",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
