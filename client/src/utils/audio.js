@@ -77,3 +77,4 @@ export function playSound(type, soundEnabled = true) {
     // Ignore audio autoplay policy errors
   }
 }
+

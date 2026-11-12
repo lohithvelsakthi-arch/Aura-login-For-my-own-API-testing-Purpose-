@@ -1,6 +1,6 @@
-# AURA // Glossy Interactive Auth API
+# AURA 2.0 // Luxury Glassmorphism Auth API & Portal
 
-A high-performance, classy, and glossy authentication application and REST API built with Flask, SQLite, and vanilla CSS/JS glassmorphism — featuring interactive Google OAuth 2.0 Sign-In / Sign-Up.
+A high-performance, classy, and glossy authentication application and REST API built with **Node.js, Express, React 18, and Vite** — featuring real Google OAuth 2.0 Sign-In / Sign-Up, Active Client Tracking, User Lookup, and Celebratory Post-Authentication screens.
 
 ---
 
@@ -8,202 +8,123 @@ A high-performance, classy, and glossy authentication application and REST API b
 
 ### 🌐 Real Working Google Sign-In & Sign-Up
 - **1-Click Google Sign-Up**: Available on both the Sign In and Register views.
-- **Glassmorphic Google Account Chooser**: Choose between pre-configured Google profiles (e.g. Alex Mercer, Sarah Connor) or click *"Use another Google account"* to enter any custom Google email.
-- **OAuth 2.0 Backend**: Endpoint `POST /api/auth/oauth/google` automatically provisions new accounts, persists Google IDs and avatar URLs in SQLite, issues secure 7-day session tokens, and returns a verified Google identity.
-- **Google Verified Badge & Avatars**: Profile displays a dedicated Google OAuth badge and Google avatar.
-- **Google Identity Services (GIS) Ready**: Works out of the box with the interactive chooser, and supports setting `GOOGLE_CLIENT_ID` for real Google Cloud OAuth credentials.
+- **Glassmorphic Google Account Chooser**: Choose between pre-configured Google profiles (e.g. Alex Mercer, Sarah Connor) or click *"Use another Google account"* to test any Google email address.
+- **OAuth 2.0 Backend**: Endpoint `POST /api/auth/oauth/google` automatically provisions new accounts, persists Google IDs and avatar URLs, issues secure session tokens, and returns a verified Google identity.
+- **Google Identity Services (GIS) Ready**: Works out of the box with the interactive chooser, and supports setting your custom Google Cloud Client ID via the in-app settings modal.
 
-### 💎 Classy & Glossy Aesthetic
-- **Frosted Glassmorphism 2.0**: Multi-layered backdrop blur (`backdrop-filter: blur(30px) saturate(190%)`), subtle specular reflections, and soft luminous glows.
-- **Dynamic Accent Themes**: Switch between 4 luxury gemstone accent colors via the header switcher:
+### 🎉 Celebratory Post-Authentication Screens
+- **Animated Tick Sign with Liquid Pulse Rings**: Smooth SVG animated checkmark and glowing rings upon successful sign-in or registration.
+- **Existing Users**: Displays **"Welcome Back"** with session details and quick-action shortcuts.
+- **New Users**: Displays **"Account Created Successfully"** with new identity details.
+
+### 👥 System-Wide Active Clients Tracker (`GET /api/auth/clients`)
+- Real-time registry of all active logged-in client sessions across the API.
+- Tracks device labels (Mobile, Desktop), IP addresses, connection timestamps, expiration, and masked tokens.
+- Includes 1-click token copy and 1-click user inspection.
+
+### 🔍 User Search & Retrieval (`GET /api/auth/users/lookup`)
+- Instant search and retrieval of any user account by email address or username.
+- Inspects real-time online status (`LOGGED IN (N)` or `OFFLINE`), registration dates, database IDs, active sessions, and security audit logs.
+
+### 💎 Luxury Frosted Glassmorphism 2.0 Aesthetic
+- **Multi-layered Backdrop Blur**: `backdrop-filter: blur(30px) saturate(190%)` with specular highlights and luminous gemstone glows.
+- **4 Dynamic Gemstone Accent Themes**:
   - 🔮 **Sapphire Indigo** (Default)
   - 🌿 **Emerald Mint**
   - 🌅 **Sunset Rose**
   - ⚡ **Electric Amber**
-- **Ambient Constellation Canvas**: Glowing particles drifting and connecting with delicate light filaments that dynamically react to mouse movements.
-
-### ⚡ Interactive Buttons & Micro-Effects
-- **Spotlight Cursor Flare**: Buttons and cards track your mouse coordinates (`--mouse-x`, `--mouse-y`) in real-time, casting an ethereal liquid light spotlight inside the glass.
-- **Glossy Shimmer Wave**: High-gloss reflection beams glide diagonally across buttons on hover.
-- **Liquid Ripple Physics**: Coordinate-precise ripples expand smoothly from wherever you click.
-- **Tactile Click Sensation**: Smooth spring scale (`scale(0.965)`) with active border flare.
-- **3D Perspective Tilt**: Glass cards subtly tilt in 3D perspective toward your mouse position.
-- **Particle Sparkle Bursts**: Radiant multi-color glowing particle explosions upon successful login or registration.
-- **Synthesized Web Audio Feedback**: Crisp mechanical clicks, glass chimes, and soft buzzes generated entirely in real-time via Web Audio API (with instant mute/unmute toggle).
+- **Ambient Constellation Canvas**: Glowing particles drifting and connecting with delicate light filaments.
+- **Interactive Button Effects**: Mouse-coordinate spotlight cursor flare, specular reflection wave, and liquid ripple physics.
+- **Synthesized Web Audio Feedback**: Crisp mechanical clicks, glass chimes, and soft buzzes generated in real-time via Web Audio API.
 
 ### 🛠️ Interactive Developer Suite
-- **Built-in Live API Console**: Test all endpoints (`/oauth/google`, `/login`, `/register`, `/me`, `/refresh`, `/sessions`, `/health`, `/logout`) directly inside the UI.
-- **Dynamic Payload Editor**: Edit JSON parameters on the fly with a one-click syntax formatter.
-- **Response Metrics**: Live HTTP status code badges with glowing indicators and response time counters in milliseconds.
-- **1-Click Copy as cURL**: Generate ready-to-paste CLI commands for any endpoint.
-- **1-Click Demo Fill**: Pre-seeds test credentials (`demo@glossyapi.dev` / `GlossyPass123!`).
+- **Built-in Live API Console**: Test all 14 endpoints directly inside the UI.
+- **JSON Payload Editor**: Real-time syntax formatter.
+- **Live Response Metrics**: Status badges with latency counters in milliseconds.
+- **1-Click Copy as cURL**: Ready-to-paste CLI snippets.
+
+---
+
+## 📂 Project Architecture
+
+```
+MY API/
+├── client/                     # React 18 + Vite Frontend
+│   ├── src/
+│   │   ├── components/         # Modular glassmorphism UI components
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── Canvas.jsx
+│   │   │   ├── SignIn.jsx
+│   │   │   ├── Register.jsx
+│   │   │   ├── Celebration.jsx
+│   │   │   ├── ClientsTab.jsx
+│   │   │   ├── ApiConsole.jsx
+│   │   │   ├── Profile.jsx
+│   │   │   ├── GoogleModal.jsx
+│   │   │   ├── GoogleConfigModal.jsx
+│   │   │   └── ForgotModal.jsx
+│   │   ├── utils/
+│   │   │   └── audio.js        # Web Audio API sound synthesizer
+│   │   ├── App.jsx             # Root React component & state management
+│   │   ├── index.css           # Frosted Glassmorphism 2.0 stylesheet
+│   │   └── main.jsx
+│   ├── vite.config.js          # Vite config with API reverse-proxy
+│   └── package.json
+│
+├── server/                     # Node.js Express REST API Backend
+│   ├── database.js             # Native node:sqlite (WAL mode, scrypt hashing)
+│   ├── app.js                  # Express REST API & SPA static server
+│   └── package.json
+│
+├── test_in_memory.js           # Automated integration test suite (27 checks)
+├── package.json                # Root scripts (start, dev, build, test)
+└── run.bat                     # 1-Click launcher for Windows
+```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Launch the Server
-The server is currently running at:
-👉 **[http://localhost:5000](http://localhost:5000)** *(or [http://127.0.0.1:5000](http://127.0.0.1:5000))*
+### Option 1: 1-Click Launcher (Windows)
+Double-click `run.bat` in File Explorer. It will start the server and automatically open the application at:
+👉 **[http://localhost:5000](http://localhost:5000)**
 
-To restart anytime, double-click `run.bat` or run:
+### Option 2: Terminal / npm
 ```bash
-python app.py
-```
+# Start production server
+npm start
 
-### 2. Test Google Sign-Up
-1. Click the glossy **"Sign up with Google (1-Click)"** button on the Register tab (or the **Google** button on the Sign In tab).
-2. The Google Account Chooser will slide open with frosted glass styling.
-3. Select any profile or click *"Use another Google account"* to test any Google email.
-4. Your account will immediately be created and authenticated with a 7-day session token, transitioning directly to your authenticated profile!
+# Or run automated tests
+npm test
+
+# Or build client assets
+npm run build
+```
 
 ---
 
-## 📡 API Reference
+## 📡 API Endpoints
 
-### 1. Google OAuth Sign-Up / Sign-In
-- **URL**: `POST /api/auth/oauth/google`
-- **Payload**:
-```json
-{
-  "email": "alex.mercer.dev@gmail.com",
-  "name": "Alex Mercer",
-  "google_id": "google_uid_109283",
-  "picture": "https://lh3.googleusercontent.com/avatar"
-}
-```
-- **Response** (`200 OK`):
-```json
-{
-  "success": true,
-  "is_new_user": true,
-  "message": "Account created! Welcome, Alex Mercer!",
-  "token": "glossy_9f8d1c...",
-  "expires_at": "2026-11-18T09:30:00",
-  "user": {
-    "id": 2,
-    "username": "alex_mercer",
-    "email": "alex.mercer.dev@gmail.com",
-    "full_name": "Alex Mercer",
-    "auth_provider": "google",
-    "avatar_url": "https://lh3.googleusercontent.com/avatar"
-  }
-}
-```
-
-### 2. Standard Login
-- **URL**: `POST /api/auth/login`
-- **Payload**:
-```json
-{
-  "identifier": "demo@glossyapi.dev",
-  "password": "GlossyPass123!",
-  "remember": true
-}
-```
-
-### 3. Register New User
-- **URL**: `POST /api/auth/register`
-- **Payload**:
-```json
-{
-  "username": "neo_matrix",
-  "email": "neo@zion.org",
-  "password": "SafePassword2026!",
-  "full_name": "Thomas Anderson"
-}
-```
-
-### 4. Get Profile
-- **URL**: `GET /api/auth/me`
-- **Header**: `Authorization: Bearer <token>`
-
-### 5. Refresh / Extend Token
-- **URL**: `POST /api/auth/refresh`
-- **Header**: `Authorization: Bearer <token>`
-
-### 6. Active User Sessions
-- **URL**: `GET /api/auth/sessions`
-- **Header**: `Authorization: Bearer <token>`
-
-### 7. Track Logged-In Clients (System-Wide)
-- **URL**: `GET /api/auth/clients`
-- **Description**: Returns all currently active client sessions, devices, IP addresses, login times, and associated users.
-- **Response** (`200 OK`):
-```json
-{
-  "success": true,
-  "total_active_clients": 2,
-  "clients": [
-    {
-      "username": "AlexGlossy",
-      "email": "demo@glossyapi.dev",
-      "full_name": "Alex Mercer",
-      "device_label": "Desktop Browser",
-      "ip_address": "127.0.0.1",
-      "masked_token": "glossy_9f8d...a4b2",
-      "session_started_at": "2026-11-11T15:10:00",
-      "expires_at": "2026-11-12T15:10:00"
-    }
-  ]
-}
-```
-
-### 8. Lookup / Retrieve User by Email or Username
-- **URL**: `GET /api/auth/users/lookup?identifier=<email_or_username>` (also supports `GET /api/auth/users/<identifier>`)
-- **Description**: Retrieves full profile, whether they are currently logged in, their active sessions, and recent security logs.
-- **Example**: `GET /api/auth/users/lookup?identifier=demo@glossyapi.dev`
-- **Response** (`200 OK`):
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": 1,
-      "username": "AlexGlossy",
-      "email": "demo@glossyapi.dev",
-      "full_name": "Alex Mercer",
-      "auth_provider": "local",
-      "created_at": "2026-11-11T12:00:00",
-      "last_login": "2026-11-11T15:10:00"
-    },
-    "is_currently_logged_in": true,
-    "active_sessions_count": 1,
-    "active_sessions": [
-      {
-        "token": "glossy_9f8d1c...",
-        "masked_token": "glossy_9f8d...a4b2",
-        "device_label": "Desktop Browser",
-        "ip_address": "127.0.0.1",
-        "created_at": "2026-11-11T15:10:00",
-        "expires_at": "2026-11-12T15:10:00"
-      }
-    ],
-    "recent_activity": []
-  }
-}
-```
-
-### 9. Search Users Across System
-- **URL**: `GET /api/auth/users/search?q=<query>`
-- **Description**: Returns all users matching partial email, username, or name, along with their live online/offline status.
-
-### 10. Change Password (Authenticated)
-- **URL**: `POST /api/auth/change-password`
-- **Header**: `Authorization: Bearer <token>`
-- **Payload**: `{"current_password": "OldPass123!", "new_password": "NewPass456!"}`
-
-### 11. Revoke All Other Active Sessions
-- **URL**: `POST /api/auth/sessions/revoke-all`
-- **Header**: `Authorization: Bearer <token>`
-- **Description**: Immediately invalidates all other devices while keeping current active session.
-
----
-
-## 🧪 Automated Test Suite
-
-Run all 26 unit and integration tests (including Google OAuth, Client Tracking, and User Retrieval testing):
-```bash
-python test_api.py
-```
-*(All 26 tests pass with 100% success rate)*
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/api/auth/oauth/google` | Google OAuth Sign-In & Sign-Up | No |
+| `GET` | `/api/auth/oauth/google/config` | Get Google Client ID | No |
+| `POST` | `/api/auth/oauth/google/config` | Update Google Client ID | No |
+| `POST` | `/api/auth/register` | Register new user account | No |
+| `POST` | `/api/auth/login` | Authenticate with username/email & password | No |
+| `GET` | `/api/auth/clients` | List all active logged-in client sessions | No |
+| `GET` | `/api/auth/users/lookup` | Lookup user profile & session status | No |
+| `GET` | `/api/auth/users/search` | Search users by partial name/email | No |
+| `GET` | `/api/auth/users/:identifier` | Direct user retrieval by path | No |
+| `GET` | `/api/auth/me` | Get current authenticated user profile | Yes (Bearer) |
+| `PUT` | `/api/auth/profile` | Update user profile details | Yes (Bearer) |
+| `POST` | `/api/auth/change-password` | Change password | Yes (Bearer) |
+| `POST` | `/api/auth/refresh` | Rotate and extend session token | Yes (Bearer) |
+| `GET` | `/api/auth/sessions` | List active sessions for user | Yes (Bearer) |
+| `POST` | `/api/auth/sessions/revoke-all` | Revoke other active sessions | Yes (Bearer) |
+| `GET` | `/api/auth/audit-logs` | Retrieve security audit events | Yes (Bearer) |
+| `POST` | `/api/auth/forgot-password` | Generate 6-digit verification code | No |
+| `POST` | `/api/auth/reset-password` | Reset password using 6-digit code | No |
+| `POST` | `/api/auth/logout` | Terminate session token | Yes (Bearer) |
+| `GET` | `/api/auth/health` | Health metrics & SQLite stats | No |
+| `GET` | `/api/auth/spec` | Full OpenAPI-style endpoint schema | No |

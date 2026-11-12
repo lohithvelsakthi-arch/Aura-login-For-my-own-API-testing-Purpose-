@@ -656,3 +656,4 @@ export function getStats() {
     total_audit_logs: auditLogsRow ? Number(auditLogsRow.total_audit_logs) : 0
   };
 }
+
